@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BOSS直聘自动投递助手</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 400px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+    }
+
+    .container {
+      background: white;
+      padding: 20px;
+    }
+
+    .header {
+      text-align: center;
+      padding: 20px 0;
+      color: white;
+      background: transparent;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      margin-bottom: 5px;
+    }
+
+    .header p {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #f8fafc;
+      border-radius: 8px;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 5px;
+    }
+
+    .section {
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #1e293b;
+    }
+
+    .input-group {
+      margin-bottom: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 5px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      font-size: 13px;
+      transition: border-color 0.2s;
+    }
+
+    input:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 60px;
+      font-family: inherit;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    input[type="checkbox"] {
+      margin-right: 8px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    button {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #475569;
+    }
+
+    .btn-secondary:hover {
+      background: #e2e8f0;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .tabs {
+      display: flex;
+      border-bottom: 2px solid #e2e8f0;
+      margin-bottom: 20px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 13px;
+      color: #64748b;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.2s;
+    }
+
+    .tab.active {
+      color: #667eea;
+      border-bottom-color: #667eea;
+      font-weight: 600;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .tag-input {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding: 8px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      min-height: 40px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      background: #667eea;
+      color: white;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .tag-remove {
+      margin-left: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .records-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .record-item {
+      padding: 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+
+    .record-title {
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .record-meta {
+      color: #64748b;
+      font-size: 11px;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 5px;
+    }
+
+    .label-with-tooltip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .tooltip-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #667eea;
+      color: white;
+      font-size: 10px;
+      font-weight: bold;
+      cursor: help;
+      position: relative;
+    }
+
+    .tooltip-icon:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 20px;
+      background: #1e293b;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      z-index: 10000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      font-weight: normal;
+      max-width: 280px;
+      white-space: normal;
+      width: max-content;
+    }
+
+    .tooltip-icon:hover::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 15px;
+      border: 5px solid transparent;
+      border-top-color: #1e293b;
+      z-index: 10001;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🚀 BOSS直聘自动投递</h1>
+    <p>智能筛选 · 自动投递 · 高效求职</p>
+  </div>
+
+  <div class="container">
+    <div class="stats">
+      <div class="stat-item">
+        <div class="stat-value" id="totalApplied">0</div>
+        <div class="stat-label">总投递</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="todayApplied">0</div>
+        <div class="stat-label">今日投递</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="config">配置</div>
+      <div class="tab" data-tab="records">记录</div>
+    </div>
+
+    <div class="tab-content active" id="config-tab">
+      <div class="section">
+        <div class="section-title">筛选条件</div>
+
+        <div class="input-group">
+          <div class="label-with-tooltip">
+            <label style="margin: 0;">关键词（逗号分隔）</label>
+            <span class="tooltip-icon" data-tooltip="填写期望的职位关键词，如：前端、React、Vue等。系统会在职位标题和描述中搜索这些关键词。">!</span>
+          </div>
+          <input type="text" id="keywords" placeholder="前端,JavaScript,React,Vue">
+          <div class="hint">职位标题或描述包含这些关键词</div>
+        </div>
+
+        <div class="input-group">
+          <label>至少匹配几个关键词才投递</label>
+          <input type="number" id="minKeywordMatch" placeholder="1" min="1" style="width: 100px;">
+          <div class="hint">例如：填2表示至少匹配2个关键词才投递</div>
+        </div>
+
+        <div class="input-group">
+          <div class="label-with-tooltip">
+            <label style="margin: 0;">排除关键词（逗号分隔）</label>
+            <span class="tooltip-icon" data-tooltip="包含这些关键词的职位会被直接跳过，不会投递。用于过滤不想要的职位类型。">!</span>
+          </div>
+          <input type="text" id="excludeKeywords" placeholder="外包,派遣,实习">
+          <div class="hint">包含这些关键词的职位将被跳过</div>
+        </div>
+
+        <div class="input-group">
+          <label>包含几个排除关键词才跳过</label>
+          <input type="number" id="minExcludeMatch" placeholder="1" min="1" style="width: 100px;">
+          <div class="hint">例如：填2表示至少包含2个排除关键词才跳过</div>
+        </div>
+
+        <div class="input-group">
+          <label>最大投递数量</label>
+          <input type="number" id="maxJobs" placeholder="50">
+        </div>
+
+        <div class="input-group">
+          <label>投递间隔（毫秒）</label>
+          <input type="number" id="delay" placeholder="2000">
+          <div class="hint">建议2000-5000，避免过快触发限制</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">招呼语设置</div>
+
+        <div class="checkbox-group">
+          <input type="checkbox" id="autoGreeting" checked>
+          <label for="autoGreeting" style="margin: 0;">自动发送招呼语</label>
+        </div>
+
+        <div class="input-group">
+          <label>招呼语模板</label>
+          <textarea id="greetingTemplate" placeholder="您好，我对这个职位很感兴趣..."></textarea>
+          <div class="hint">支持变量: {experience} {position} {company}</div>
+        </div>
+      </div>
+
+      <div class="button-group">
+        <button class="btn-secondary" id="saveConfig">保存配置</button>
+        <button class="btn-primary" id="startApply">开始投递</button>
+      </div>
+    </div>
+
+    <div class="tab-content" id="records-tab">
+      <div class="section">
+        <div class="section-title">投递记录</div>
+        <div class="records-list" id="recordsList">
+          <p style="text-align: center; color: #94a3b8; padding: 20px;">暂无记录</p>
+        </div>
+      </div>
+      <div class="button-group">
+        <button class="btn-secondary" id="clearRecords">清空记录</button>
+        <button class="btn-secondary" id="exportRecords">导出记录</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
