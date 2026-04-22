@@ -153,22 +153,36 @@ async function loadRecords() {
   const recordsList = document.getElementById('recordsList');
 
   if (records.length === 0) {
-    recordsList.innerHTML = '<p style="text-align: center; color: #94a3b8; padding: 20px;">暂无记录</p>';
+    // 使用 DOM 方法替代 innerHTML
+    recordsList.textContent = '';
+    const emptyMsg = document.createElement('p');
+    emptyMsg.style.cssText = 'text-align: center; color: #94a3b8; padding: 20px;';
+    emptyMsg.textContent = '暂无记录';
+    recordsList.appendChild(emptyMsg);
     return;
   }
 
   // 按时间倒序排列
   records.sort((a, b) => new Date(b.appliedAt) - new Date(a.appliedAt));
 
-  recordsList.innerHTML = records.slice(0, 50).map(record => `
-    <div class="record-item">
-      <div class="record-title">${record.title}</div>
-      <div class="record-meta">
-        ${record.company} | ${record.salary}<br>
-        匹配度: ${record.matchScore}分 | ${new Date(record.appliedAt).toLocaleString('zh-CN')}
-      </div>
-    </div>
-  `).join('');
+  // 使用 DOM 方法替代 innerHTML
+  recordsList.textContent = '';
+  records.slice(0, 50).forEach(record => {
+    const recordItem = document.createElement('div');
+    recordItem.className = 'record-item';
+
+    const recordTitle = document.createElement('div');
+    recordTitle.className = 'record-title';
+    recordTitle.textContent = record.title;
+
+    const recordMeta = document.createElement('div');
+    recordMeta.className = 'record-meta';
+    recordMeta.textContent = `${record.company} | ${record.salary}\n匹配度: ${record.matchScore}分 | ${new Date(record.appliedAt).toLocaleString('zh-CN')}`;
+
+    recordItem.appendChild(recordTitle);
+    recordItem.appendChild(recordMeta);
+    recordsList.appendChild(recordItem);
+  });
 }
 
 // 显示通知

@@ -11,6 +11,9 @@
   "host_permissions": [
     "https://www.zhipin.com/*"
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -23,15 +26,7 @@
     {
       "matches": [
         "https://www.zhipin.com/web/geek/job*",
-        "https://www.zhipin.com/web/geek/chat*"
-      ],
-      "js": ["scripts/interceptor.js"],
-      "run_at": "document_start",
-      "world": "MAIN"
-    },
-    {
-      "matches": [
-        "https://www.zhipin.com/web/geek/job*",
+        "https://www.zhipin.com/web/geek/jobs*",
         "https://www.zhipin.com/web/geek/chat*"
       ],
       "js": ["scripts/content.js"],

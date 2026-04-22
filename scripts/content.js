@@ -23,6 +23,12 @@ let isPaused = false;
 let isRunning = false;
 let debugPanelClosed = false; // 标记用户是否手动关闭了调试面板
 
+// 纯延迟函数（不检查状态，用于聊天页面等独立场景）
+function pureDelay(min, max) {
+  const delay = Math.random() * (max - min) + min;
+  return new Promise(resolve => setTimeout(resolve, delay));
+}
+
 // 添加调试面板
 function addDebugPanel() {
   // 如果已存在，先移除
@@ -52,49 +58,71 @@ function addDebugPanel() {
     min-height: 200px;
   `;
 
-  panel.innerHTML = `
-    <div id="debug-panel-header" style="
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 15px;
-      background: linear-gradient(135deg, #00b38a 0%, #00d9a5 100%);
-      color: white;
-      cursor: move;
-      user-select: none;
-      flex-shrink: 0;
-    ">
-      <strong style="font-size: 14px;">🔍 运行日志</strong>
-      <div>
-        <button id="clear-debug-log" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-right: 5px; font-size: 12px;">清空</button>
-        <button id="close-debug-panel" style="background: rgba(255,68,68,0.9); color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">关闭</button>
-      </div>
-    </div>
-    <div id="debug-content" style="
-      font-family: monospace;
-      white-space: pre-wrap;
-      word-break: break-all;
-      font-size: 11px;
-      line-height: 1.4;
-      padding: 15px;
-      overflow-y: auto;
-      flex: 1;
-    "></div>
+  // 创建 header
+  const panelHeader = document.createElement('div');
+  panelHeader.id = 'debug-panel-header';
+  panelHeader.style.cssText = `
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: linear-gradient(135deg, #00b38a 0%, #00d9a5 100%);
+    color: white;
+    cursor: move;
+    user-select: none;
+    flex-shrink: 0;
   `;
 
+  const title = document.createElement('strong');
+  title.style.fontSize = '14px';
+  title.textContent = '🔍 运行日志';
+
+  const buttonGroup = document.createElement('div');
+
+  const clearBtn = document.createElement('button');
+  clearBtn.id = 'clear-debug-log';
+  clearBtn.textContent = '清空';
+  clearBtn.style.cssText = 'background: rgba(255,255,255,0.2); color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-right: 5px; font-size: 12px;';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.id = 'close-debug-panel';
+  closeBtn.textContent = '关闭';
+  closeBtn.style.cssText = 'background: rgba(255,68,68,0.9); color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;';
+
+  buttonGroup.appendChild(clearBtn);
+  buttonGroup.appendChild(closeBtn);
+  panelHeader.appendChild(title);
+  panelHeader.appendChild(buttonGroup);
+
+  // 创建 content
+  const content = document.createElement('div');
+  content.id = 'debug-content';
+  content.style.cssText = `
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-size: 11px;
+    line-height: 1.4;
+    padding: 15px;
+    overflow-y: auto;
+    flex: 1;
+  `;
+
+  panel.appendChild(panelHeader);
+  panel.appendChild(content);
   document.body.appendChild(panel);
 
   // 关闭按钮
-  document.getElementById('close-debug-panel').addEventListener('click', () => {
+  closeBtn.addEventListener('click', () => {
     debugPanelClosed = true; // 标记用户手动关闭
     panel.remove();
   });
 
   // 清空按钮
-  document.getElementById('clear-debug-log').addEventListener('click', () => {
+  clearBtn.addEventListener('click', () => {
     const content = document.getElementById('debug-content');
     if (content) {
-      content.innerHTML = '';
+      content.textContent = '';
     }
   });
 
@@ -189,7 +217,17 @@ function logToPanel(message, type = 'info') {
     border-left: 3px solid ${colors[type] || colors.info};
     background: ${type === 'error' ? '#fff5f5' : type === 'success' ? '#f0fff4' : '#f9f9f9'};
   `;
-  logEntry.innerHTML = `<span style="color: #999;">[${time}]</span> <span style="color: ${colors[type] || colors.info};">${message}</span>`;
+
+  const timeSpan = document.createElement('span');
+  timeSpan.style.color = '#999';
+  timeSpan.textContent = `[${time}]`;
+
+  const messageSpan = document.createElement('span');
+  messageSpan.style.color = colors[type] || colors.info;
+  messageSpan.textContent = ` ${message}`;
+
+  logEntry.appendChild(timeSpan);
+  logEntry.appendChild(messageSpan);
 
   content.appendChild(logEntry);
 
@@ -200,7 +238,27 @@ function logToPanel(message, type = 'info') {
 // 随机���迟函数（模拟人工行为）
 function randomDelay(min, max) {
   const delay = Math.random() * (max - min) + min;
-  return new Promise(resolve => setTimeout(resolve, delay));
+  return new Promise(resolve => {
+    let elapsed = 0;
+    const interval = 200; // 每200ms检查一次
+    const timer = setInterval(() => {
+      // 如果已停止，立即结束等待
+      if (!isRunning) {
+        clearInterval(timer);
+        resolve();
+        return;
+      }
+      // 如果暂停，不增加elapsed，等待恢复
+      if (isPaused) {
+        return;
+      }
+      elapsed += interval;
+      if (elapsed >= delay) {
+        clearInterval(timer);
+        resolve();
+      }
+    }, interval);
+  });
 }
 
 // 模拟人工滚动
@@ -465,6 +523,22 @@ async function clickChatButton(job) {
 
         // 检查是否已沟通
         if (!text.includes('已沟通') && !text.includes('继续沟通') && !btn.disabled) {
+          // 【关键修改】在点击按钮之前就保存 pendingGreeting，防止直接跳转导致保存失败
+          const config = await getConfig();
+          if (config.autoGreeting && config.greetingTemplate) {
+            logToPanel('📝 [预保存] 保存待发送招呼语: ' + config.greetingTemplate, 'info');
+            await chrome.storage.local.set({
+              pendingGreeting: {
+                message: config.greetingTemplate,
+                timestamp: Date.now()
+              }
+            });
+
+            // 验证保存成功
+            const { pendingGreeting } = await chrome.storage.local.get('pendingGreeting');
+            logToPanel('✅ [预保存] 已保存 pendingGreeting: ' + JSON.stringify(pendingGreeting), 'success');
+          }
+
           simulateMouseHover(btn);
           await randomDelay(200, 500);
           btn.click();
@@ -496,6 +570,23 @@ async function clickChatButton(job) {
     // 精确匹配"立即沟通"
     if (text === '立即沟通' && btn.offsetParent !== null && !btn.disabled) {
       logToPanel('✅ 通过文本精确匹配找到: ' + btn.tagName + ' ' + btn.className, 'success');
+
+      // 【关键修改】在点击按钮之前就保存 pendingGreeting，防止直接跳转导致保存失败
+      const config = await getConfig();
+      if (config.autoGreeting && config.greetingTemplate) {
+        logToPanel('📝 [预保存] 保存待发送招呼语: ' + config.greetingTemplate, 'info');
+        await chrome.storage.local.set({
+          pendingGreeting: {
+            message: config.greetingTemplate,
+            timestamp: Date.now()
+          }
+        });
+
+        // 验证保存成功
+        const { pendingGreeting } = await chrome.storage.local.get('pendingGreeting');
+        logToPanel('✅ [预保存] 已保存 pendingGreeting: ' + JSON.stringify(pendingGreeting), 'success');
+      }
+
       simulateMouseHover(btn);
       await randomDelay(200, 500);
       btn.click();
@@ -555,10 +646,14 @@ async function handleGreetingDialog() {
               }
             });
 
+            // 验证保存成功
+            const { pendingGreeting } = await chrome.storage.local.get('pendingGreeting');
+            logToPanel('✅ 已保存 pendingGreeting: ' + JSON.stringify(pendingGreeting), 'success');
+
             logToPanel('🖱️ 点击"继续沟通"，即将跳转聊天页...', 'info');
             // 注意：点击后页面会跳转，当前脚本上下文会销毁
             // processJobs 调用方在点击前已保存了 applyProgress
-            await randomDelay(300, 600);
+            await randomDelay(500, 800);
             btn.click();
 
             // 返回 'navigating' 特殊标记，告诉 processJobs 页面即将跳转
@@ -595,29 +690,48 @@ async function handleGreetingDialog() {
 
 // 发送自定义招呼语（在聊天页面执行）
 async function sendCustomGreeting() {
+  logToPanel('📝 [聊天页面] ========== 开始执行 sendCustomGreeting ==========', 'info');
   logToPanel('📝 [聊天页面] 准备发送自定义招呼语...', 'info');
+
+  // 等待聊天页面加载
+  logToPanel('⏳ [聊天页面] 等待页面加载...', 'info');
+  await pureDelay(3000, 5000);
+
+  // 检查聊天记录中的消息数量
+  logToPanel('🔍 [聊天页面] 检查是否已发送过消息...', 'info');
+  const messages = document.querySelectorAll('.message-item');
+  logToPanel('📊 [聊天页面] 当前消息数量: ' + messages.length, 'info');
+
+  if (messages.length >= 3) {
+    logToPanel('ℹ️ [聊天页面] 检测到已有 ' + messages.length + ' 条消息（>=2），跳过发送', 'warning');
+    await chrome.storage.local.remove('pendingGreeting');
+    await pureDelay(2000, 3000);
+    logToPanel('🔙 [聊天页面] 准备返回职位列表...', 'info');
+    window.history.back();
+    return;
+  }
+
+  logToPanel('✅ [聊天页面] 消息数量 < 2，继续发送', 'success');
 
   // 检查是否有待发送的招呼语
   const { pendingGreeting } = await chrome.storage.local.get('pendingGreeting');
 
   if (!pendingGreeting) {
     logToPanel('⏭️ [聊天页面] 没有待发送的招呼语', 'warning');
+    logToPanel('⚠️ [聊天页面] ========== sendCustomGreeting 提前退出 ==========', 'warning');
     return;
   }
 
   const message = pendingGreeting.message;
   logToPanel('📝 [聊天页面] 待发送消息: "' + message + '"', 'success');
 
-  // 等待聊天页面加载，光标应该已经在输入框中
-  logToPanel('⏳ [聊天页面] 等待页面加载...', 'info');
-  await randomDelay(2000, 3000);
-
   // 直接在当前光标位置插入文字（光标默认已在输入框中）
   logToPanel('⌨️ [聊天页面] 直接在光标位置插入文字...', 'info');
   document.execCommand('insertText', false, message);
   logToPanel('✅ [聊天页面] 已插入招呼语', 'success');
 
-  await randomDelay(800, 1200);
+  // 模拟打字后的思考时间
+  await pureDelay(2000, 3000);
 
   // 使用��车发送
   logToPanel('⌨️ [聊天页面] 按回车发送消息...', 'info');
@@ -646,16 +760,27 @@ async function sendCustomGreeting() {
     logToPanel('⚠️ [聊天页面] 没有聚焦元素', 'warning');
   }
 
-  await randomDelay(1500, 2000);
+  // 等待消息发送完成
+  await pureDelay(2000, 3000);
 
   // 清除待发送标记
   await chrome.storage.local.remove('pendingGreeting');
   logToPanel('✅ [聊天页面] 已清除待发送标记', 'success');
 
+  // 停留一段时间，模拟真人查看聊天记录
+  logToPanel('⏳ [聊天页面] 停留片刻，模拟真人行为...', 'info');
+  await pureDelay(3000, 5000);
+
   // 返回职位列表页面（返回后 content script 重新加载，init 会检测 applyProgress 并自动恢复）
-  await randomDelay(800, 1200);
+  logToPanel('🔙 [聊天页面] ========== 准备执行 window.history.back() ==========', 'info');
   logToPanel('🔙 [聊天页面] 返回职位列表页面...', 'info');
+
+  // 添加一个标记，表示是我们主动返回的
+  await chrome.storage.local.set({ manualReturn: true });
+
   window.history.back();
+
+  logToPanel('✅ [聊天页面] ========== 已调用 window.history.back() ==========', 'success');
 }
 
 // 点击职位卡片，加载详情
@@ -851,10 +976,22 @@ async function processJobs() {
     logToPanel('🔄 恢复之前的投递进度: 从第 ' + startIndex + ' 个开始, 已投递 ' + applied + ' 个', 'success');
     // 清除进度标记（本轮投递会在需要时重新保存）
     await chrome.storage.local.remove('applyProgress');
+
+    // 恢复进度时，额外等待页面加载
+    logToPanel('⏳ 等待页面加载职位列表...', 'info');
+    await randomDelay(2000, 3000);
   }
 
-  // 查找职位卡片
+  // 查找职位卡片（最多尝试3次，每次间隔1秒）
   let jobElements = findJobCards();
+  let retryCount = 0;
+
+  while (jobElements.length === 0 && retryCount < 3 && isRunning) {
+    logToPanel('⏳ 职位列表未加载，等待1秒后重试... (' + (retryCount + 1) + '/3)', 'warning');
+    await randomDelay(1000, 1000);
+    jobElements = findJobCards();
+    retryCount++;
+  }
 
   if (jobElements.length === 0) {
     logToPanel('❌ 未找到职位列表', 'error');
@@ -935,14 +1072,32 @@ async function processJobs() {
       logToPanel('🔍 点击卡片查看详情: ' + job.title, 'info');
       const cardClicked = await clickJobCard(element, job);
 
+      // 点击后检查是否停止
+      if (!isRunning) {
+        logToPanel('⏹️ 任务已停止', 'warning');
+        break;
+      }
+
       if (!cardClicked) {
         logToPanel('❌ 无法点击职位卡片', 'error');
         results.push({ job, success: false, match: preliminaryMatch, reason: '无法点击职位卡片' });
         continue;
       }
 
+      // 点击后检查是否停止
+      if (!isRunning) {
+        logToPanel('⏹️ 任务已停止', 'warning');
+        break;
+      }
+
       // 步骤2: 获取详情信息（优先使用拦截的接口响应）
       const detailInfo = await getJobDetailInfo(job.url);
+
+      // 提取后检查是否停止
+      if (!isRunning) {
+        logToPanel('⏹️ 任务已停止', 'warning');
+        break;
+      }
 
       if (detailInfo) {
         // 用详情信息更新 job 对象
@@ -979,6 +1134,12 @@ async function processJobs() {
         // 步骤4: 点击沟通按钮并发送招呼语
         const clicked = await clickChatButton(job);
 
+        // 点击后检查是否停止
+        if (!isRunning) {
+          logToPanel('⏹️ 任务已停止', 'warning');
+          break;
+        }
+
         if (clicked === 'navigating') {
           logToPanel('🔄 页面即将跳转到聊天页，进度已保存', 'info');
           await saveRecord({ ...job, matchScore: finalMatch.score, matchReasons: finalMatch.reasons });
@@ -996,10 +1157,22 @@ async function processJobs() {
           // 随机延迟
           await randomDelay(config.minDelay, config.maxDelay);
 
+          // 延迟后再次检查是否停止
+          if (!isRunning) {
+            logToPanel('⏹️ 任务已停止', 'warning');
+            break;
+          }
+
           // 批次休息
           if (applied % config.batchSize === 0) {
             logToPanel('⏸️ 已投递 ' + applied + ' 个，休息 ' + (config.batchDelay/1000) + ' 秒...', 'warning');
             await randomDelay(config.batchDelay, config.batchDelay + 5000);
+
+            // 休息后再次检查是否停止
+            if (!isRunning) {
+              logToPanel('⏹️ 任务已停止', 'warning');
+              break;
+            }
           }
         } else {
           results.push({ job, success: false, match: finalMatch, reason: '未找到沟通按钮或已沟通' });
@@ -1092,45 +1265,108 @@ function showResults(results, applied) {
   const successJobs = results.filter(r => r.success);
   const failedJobs = results.filter(r => !r.success);
 
-  panel.innerHTML = `
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-      <h3 style="margin: 0; font-size: 20px; color: #333;">投递完成</h3>
-      <button id="close-results" style="border: none; background: none; font-size: 28px; cursor: pointer; color: #999;">&times;</button>
-    </div>
+  // 创建头部
+  const headerDiv = document.createElement('div');
+  headerDiv.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;';
 
-    <div style="margin-bottom: 20px; padding: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white;">
-      <div style="font-size: 32px; font-weight: bold; margin-bottom: 8px;">${applied}</div>
-      <div style="font-size: 14px; opacity: 0.9;">成功投递职位</div>
-    </div>
+  const title = document.createElement('h3');
+  title.style.cssText = 'margin: 0; font-size: 20px; color: #333;';
+  title.textContent = '投递完成';
 
-    ${successJobs.length > 0 ? `
-      <div style="margin-bottom: 20px;">
-        <h4 style="font-size: 14px; color: #666; margin-bottom: 12px;">✅ 成功投递 (${successJobs.length})</h4>
-        ${successJobs.slice(0, 5).map(r => `
-          <div style="padding: 12px; background: #f0f9ff; border-radius: 6px; margin-bottom: 8px;">
-            <div style="font-weight: 500; color: #333; margin-bottom: 4px;">${r.job.title}</div>
-            <div style="font-size: 12px; color: #666;">${r.job.company} · ${r.job.salary}</div>
-            <div style="font-size: 12px; color: #10b981; margin-top: 4px;">匹配度: ${r.match.score}分</div>
-          </div>
-        `).join('')}
-        ${successJobs.length > 5 ? `<div style="text-align: center; color: #999; font-size: 12px;">还有 ${successJobs.length - 5} 个...</div>` : ''}
-      </div>
-    ` : ''}
+  const closeBtn = document.createElement('button');
+  closeBtn.id = 'close-results';
+  closeBtn.style.cssText = 'border: none; background: none; font-size: 28px; cursor: pointer; color: #999;';
+  closeBtn.textContent = '×';
 
-    ${failedJobs.length > 0 ? `
-      <div>
-        <h4 style="font-size: 14px; color: #666; margin-bottom: 12px;">⏭️ 跳过 (${failedJobs.length})</h4>
-        <div style="font-size: 12px; color: #999;">
-          ${failedJobs.slice(0, 3).map(r => `${r.job.title} (${r.reason || '匹配度不足'})`).join('<br>')}
-        </div>
-      </div>
-    ` : ''}
-  `;
+  headerDiv.appendChild(title);
+  headerDiv.appendChild(closeBtn);
+  panel.appendChild(headerDiv);
+
+  // 创建统计卡片
+  const statsDiv = document.createElement('div');
+  statsDiv.style.cssText = 'margin-bottom: 20px; padding: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white;';
+
+  const countDiv = document.createElement('div');
+  countDiv.style.cssText = 'font-size: 32px; font-weight: bold; margin-bottom: 8px;';
+  countDiv.textContent = applied.toString();
+
+  const labelDiv = document.createElement('div');
+  labelDiv.style.cssText = 'font-size: 14px; opacity: 0.9;';
+  labelDiv.textContent = '成功投递职位';
+
+  statsDiv.appendChild(countDiv);
+  statsDiv.appendChild(labelDiv);
+  panel.appendChild(statsDiv);
+
+  // 成功列表
+  if (successJobs.length > 0) {
+    const successSection = document.createElement('div');
+    successSection.style.marginBottom = '20px';
+
+    const successTitle = document.createElement('h4');
+    successTitle.style.cssText = 'font-size: 14px; color: #666; margin-bottom: 12px;';
+    successTitle.textContent = `✅ 成功投递 (${successJobs.length})`;
+    successSection.appendChild(successTitle);
+
+    successJobs.slice(0, 5).forEach(r => {
+      const jobDiv = document.createElement('div');
+      jobDiv.style.cssText = 'padding: 12px; background: #f0f9ff; border-radius: 6px; margin-bottom: 8px;';
+
+      const jobTitle = document.createElement('div');
+      jobTitle.style.cssText = 'font-weight: 500; color: #333; margin-bottom: 4px;';
+      jobTitle.textContent = r.job.title;
+
+      const jobInfo = document.createElement('div');
+      jobInfo.style.cssText = 'font-size: 12px; color: #666;';
+      jobInfo.textContent = `${r.job.company} · ${r.job.salary}`;
+
+      const matchInfo = document.createElement('div');
+      matchInfo.style.cssText = 'font-size: 12px; color: #10b981; margin-top: 4px;';
+      matchInfo.textContent = `匹配度: ${r.match.score}分`;
+
+      jobDiv.appendChild(jobTitle);
+      jobDiv.appendChild(jobInfo);
+      jobDiv.appendChild(matchInfo);
+      successSection.appendChild(jobDiv);
+    });
+
+    if (successJobs.length > 5) {
+      const moreDiv = document.createElement('div');
+      moreDiv.style.cssText = 'text-align: center; color: #999; font-size: 12px;';
+      moreDiv.textContent = `还有 ${successJobs.length - 5} 个...`;
+      successSection.appendChild(moreDiv);
+    }
+
+    panel.appendChild(successSection);
+  }
+
+  // 失败列表
+  if (failedJobs.length > 0) {
+    const failedSection = document.createElement('div');
+
+    const failedTitle = document.createElement('h4');
+    failedTitle.style.cssText = 'font-size: 14px; color: #666; margin-bottom: 12px;';
+    failedTitle.textContent = `⏭️ 跳过 (${failedJobs.length})`;
+    failedSection.appendChild(failedTitle);
+
+    const failedList = document.createElement('div');
+    failedList.style.cssText = 'font-size: 12px; color: #999;';
+    failedJobs.slice(0, 3).forEach((r, index) => {
+      if (index > 0) {
+        failedList.appendChild(document.createElement('br'));
+      }
+      const text = document.createTextNode(`${r.job.title} (${r.reason || '匹配度不足'})`);
+      failedList.appendChild(text);
+    });
+    failedSection.appendChild(failedList);
+
+    panel.appendChild(failedSection);
+  }
 
   document.body.appendChild(panel);
 
   // 关闭按钮
-  document.getElementById('close-results').addEventListener('click', () => {
+  closeBtn.addEventListener('click', () => {
     panel.remove();
   });
 
@@ -1343,12 +1579,22 @@ async function init() {
 
   // 如果在聊天页面，检查是否有待发送的招呼语
   if (window.location.href.includes('/web/geek/chat')) {
-    logToPanel('📍 [初始化] 检测到聊天页面', 'success');
+    logToPanel('📍 [初始化] ========== 检测到聊天页面 ==========', 'success');
+    logToPanel('📍 [初始化] 当前URL: ' + window.location.href, 'success');
+
+    // 检查是否是我们主动返回后又进入的
+    const { manualReturn } = await chrome.storage.local.get('manualReturn');
+    if (manualReturn) {
+      logToPanel('⚠️ [初始化] 检测到 manualReturn 标记，这是异常情况！', 'error');
+      logToPanel('⚠️ [初始化] 说明调用 history.back() 后没有真正返回，而是停留在聊天页', 'error');
+      await chrome.storage.local.remove('manualReturn');
+    }
 
     // 等待页面加载
-    await randomDelay(1500, 2000);
+    await pureDelay(1500, 2000);
 
     const { pendingGreeting } = await chrome.storage.local.get('pendingGreeting');
+    logToPanel('🔍 [初始化] 检查 pendingGreeting: ' + JSON.stringify(pendingGreeting), 'info');
 
     if (pendingGreeting && pendingGreeting.timestamp > Date.now() - 300000) {
       logToPanel('✅ [初始化] 检测到待发送招呼语，准备自动发送', 'success');
@@ -1356,6 +1602,8 @@ async function init() {
       await sendCustomGreeting();
       // sendCustomGreeting 最后会调用 history.back() 返回职位列表页
       // 返回后 content script 重新加载，init() 检测到 applyProgress 自动恢复
+    } else {
+      logToPanel('⚠️ [初始化] 没有待发送的招呼语或已过期', 'warning');
     }
   }
 }
