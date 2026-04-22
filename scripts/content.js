@@ -762,9 +762,23 @@ async function scrollToLoadMore() {
   let lastCount = beforeCount;
 
   while (scrollAttempts < maxScrollAttempts && noNewDataCount < 3) {
+    // 检查停止
     if (!isRunning) {
-      logToPanel('滚动已停止', 'warning');
+      logToPanel('⏹️ 滚动已停止', 'warning');
       break;
+    }
+
+    // 检查暂停，暂停时等待恢复
+    if (isPaused) {
+      logToPanel('⏸️ 滚动暂停中...', 'warning');
+      while (isPaused && isRunning) {
+        await randomDelay(500, 500);
+      }
+      if (!isRunning) {
+        logToPanel('⏹️ 滚动已停止', 'warning');
+        break;
+      }
+      logToPanel('▶️ 继续滚动...', 'info');
     }
 
     window.scrollTo({
@@ -857,25 +871,27 @@ async function processJobs() {
   const maxNoNewJobsRounds = 3; // 连续3轮没新职位就停止
 
   // 外层循环：处理当前批次 → 滚动加载更多 → 继续处理
-  while (applied < config.maxJobs && noNewJobsRounds < maxNoNewJobsRounds && !isPaused && isRunning) {
+  while (applied < config.maxJobs && noNewJobsRounds < maxNoNewJobsRounds && isRunning) {
     let processedInThisRound = 0;
 
     for (let i = startIndex; i < jobElements.length; i++) {
-      // 检查是否暂停或停止
-      if (isPaused && isRunning) {
-        logToPanel('⏸️ 已暂停，等待继续...', 'warning');
-        while (isPaused && isRunning) {
-          await randomDelay(1000, 1000);
-        }
-        if (isRunning) {
-          logToPanel('▶️ 继续投递...', 'info');
-        }
-      }
-
-      // 如果已停止，立即退出
+      // ���果已停止，立即退出
       if (!isRunning) {
         logToPanel('⏹️ 任务已停止', 'warning');
         break;
+      }
+
+      // 检查是否暂停，暂停时在此处等待恢复
+      if (isPaused) {
+        logToPanel('⏸️ 已暂停，等待继续...', 'warning');
+        while (isPaused && isRunning) {
+          await randomDelay(500, 500);
+        }
+        if (!isRunning) {
+          logToPanel('⏹️ 任务已停止', 'warning');
+          break;
+        }
+        logToPanel('▶️ 继续投递...', 'info');
       }
 
       if (applied >= config.maxJobs) {
