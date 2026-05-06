@@ -112,6 +112,7 @@ async function loadConfig() {
   document.getElementById('maxJobs').value = config.maxJobs || 50;
   document.getElementById('delay').value = config.delay || 2000;
   document.getElementById('autoGreeting').checked = config.autoGreeting !== false;
+  document.getElementById('hrOnline').checked = config.hrOnline !== false;
   document.getElementById('greetingTemplate').value = config.greetingTemplate || '您好，我对这个职位很感兴趣，我有{experience}的相关经验，期待与您进一步沟通。';
 }
 
@@ -125,6 +126,7 @@ async function saveConfig() {
     maxJobs: parseInt(document.getElementById('maxJobs').value) || 50,
     delay: parseInt(document.getElementById('delay').value) || 2000,
     autoGreeting: document.getElementById('autoGreeting').checked,
+	hrOnline: document.getElementById('hrOnline').checked,
     greetingTemplate: document.getElementById('greetingTemplate').value
   };
 
