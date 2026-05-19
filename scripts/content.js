@@ -15,7 +15,8 @@ const DEFAULT_CONFIG = {
   minDelay: 3000,  // 最小延迟3秒
   maxDelay: 8000,  // 最大延迟8秒
   batchSize: 5,    // 每批投递5个
-  batchDelay: 15000 // 批次间隔15秒
+  batchDelay: 15000, // 批次间隔15秒
+  hrOnlineStatus: true //hr在线状态 true在线，false离线
 };
 
 // 全局状态
@@ -380,7 +381,8 @@ function extractJobInfo(element) {
       company: ['.company-name', '[class*="company-name"]', '.company-text'],
       experience: ['.tag-list li:first-child', '[class*="experience"]', '.job-limit li:first-child'],
       desc: ['.job-desc', '[class*="desc"]', '.info-desc'],
-      link: ['a[href*="/job_detail/"]', 'a.job-card-left']
+      link: ['a[href*="/job_detail/"]', 'a.job-card-left'],
+	  hrOnline: ['.boss-logo .boss-online-icon']
     };
 
     const getElement = (selectorList) => {
@@ -397,7 +399,12 @@ function extractJobInfo(element) {
     const experienceEl = getElement(selectors.experience);
     const descEl = getElement(selectors.desc);
     const linkEl = getElement(selectors.link);
+	const hrOnlineEl = getElement(selectors.hrOnline);
 
+	//hr在线状态：有这个span标签，离线状态：没有span标签
+    //<span data-v-0c0e192e="" class="boss-online-icon"></span>
+	const hrOnlineStatus = hrOnlineEl === null ? false : true;
+	
     if (!titleEl || !linkEl) return null;
 
     const jobId = linkEl.href.match(/job_detail\/([^?]+)/)?.[1] || '';
@@ -425,7 +432,9 @@ function extractJobInfo(element) {
       company: companyEl?.textContent.trim() || '',
       experience: experienceEl?.textContent.trim() || '',
       description: descEl?.textContent.trim() || '',
-      url: linkEl.href
+      url: linkEl.href,
+	  hrOnlineStatus: hrOnlineStatus
+	  
     };
   } catch (e) {
     logToPanel('提取职位信息失败: ' + e.message, 'error');
@@ -1056,7 +1065,19 @@ async function processJobs() {
         logToPanel('⏭️ 跳过已投递: ' + job.title, 'warning');
         continue;
       }
-
+	  
+	  //如果配置勾选了BOSS在线状态
+	  if(config.hrOnlineStatus){
+		  if(job.hrOnlineStatus != config.hrOnlineStatus){
+		    	//配置中的BOSS在线状态 和 卡片上的BOSS在线状态不匹配，不继续投
+		    	logToPanel('⏭️ 跳过BOSS不在线状态: ' + job.title, 'info');
+				continue;
+		    }
+	  }else{
+		  //配置中没有勾选BOSS在线状态，这里不管BOSS状态是否在线都进行投递
+	  }
+	  
+	
       // 初步计算匹配度（基于卡片信息）
       const preliminaryMatch = calculateMatch(job, config);
       logToPanel('📊 [初步] ' + job.title + ' (' + job.salary + ') - 匹配度: ' + preliminaryMatch.score + '分', 'info');
